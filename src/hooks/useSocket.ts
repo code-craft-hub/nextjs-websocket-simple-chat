@@ -48,7 +48,7 @@ export const useSocket = (room: string | null = null) => {
       }
     });
 
-    socketInstance.on("connect_error", (error: any) => {
+    socketInstance.on("connect_error", (error) => {
       setConnectionError(error.message);
       setIsConnected(false);
       console.error("Connection error:", error);
