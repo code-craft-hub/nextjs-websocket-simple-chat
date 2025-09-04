@@ -3,43 +3,83 @@ import { createServer } from "node:http";
 import next from "next";
 import { Server } from "socket.io";
 
-const dev = process.env.NODE_ENV !== "production";
+const dev = process.env.NODE_ENV !== 'production'
 const hostname = process.env.HOSTNAME || "localhost";
 const port = parseInt(process.env.PORT || "3003", 10);
 
-const app = next({ dev, hostname, port });
-
-const handle = app.getRequestHandler();
+const app = next({ dev, hostname, port })
+const handler = app.getRequestHandler()
 
 app.prepare().then(() => {
-  const httpServer = createServer(handle);
-  const io = new Server(httpServer);
+  const httpServer = createServer(handler)
 
-  io.on("connection", (socket) => {
-    
-    console.log(`User connected: ${socket.id}`);
+  const io = new Server(httpServer, {
+    cors: {
+      origin: process.env.NODE_ENV === 'production' 
+        ? ["https://yourdomain.com"] 
+        : ["http://localhost:3000"],
+      methods: ["GET", "POST"]
+    },
+    transports: ['websocket', 'polling'],
+    pingTimeout: 60000,
+    pingInterval: 25000
+  })
 
-    socket.on("join-room", ({ room, username }) => {
-      socket.join(room);
+  // Connection handling
+  io.on('connection', (socket) => {
+    console.log('Client connected:', socket.id)
 
-      socket.to(room).emit("user_joined", `${username} joined room`);
-    });
+    // Join room
+    socket.on('join-room', (room) => {
+      socket.join(room)
+      socket.to(room).emit('user-joined', { userId: socket.id })
+      console.log(`Socket ${socket.id} joined room: ${room}`)
+    })
 
-    socket.on("message", ({ room, message, sender }) => {
-      console.log(`Message from ${sender} in room ${room}: ${message}`);
-      socket.to(room).emit("message", { sender, message });
-    });
+    // Handle messages
+    socket.on('send-message', (data) => {
+      const { room, message, timestamp } = data
+      io.to(room).emit('receive-message', {
+        message,
+        timestamp,
+        userId: socket.id
+      })
+    })
 
-    socket.onAny((event, ...args) => {
-      console.log("Server received event:", event, args);
-    });
+    // Handle typing indicators
+    socket.on('typing', (data) => {
+      socket.to(data.room).emit('user-typing', {
+        userId: socket.id,
+        isTyping: data.isTyping
+      })
+    })
 
-    socket.on("disconnect", () => {
-      console.log(`User disconnected: ${socket.id}`);
-    });
-  });
+    // Disconnect handling
+    socket.on('disconnect', (reason) => {
+      console.log('Client disconnected:', socket.id, 'Reason:', reason)
+    })
 
-  httpServer.listen(port, () => {
-    console.log(`Server running on http://${hostname}: ${port}`);
-  });
-});
+    // Error handling
+    socket.on('error', (error) => {
+      console.error('Socket error:', error)
+    })
+  })
+
+  // Graceful error handling
+  process.on('SIGINT', () => {
+    console.log('Shutting down server...')
+    io.close()
+    httpServer.close(() => {
+      process.exit(0)
+    })
+  })
+
+  httpServer
+    .once('error', (err) => {
+      console.error('Server error:', err)
+      process.exit(1)
+    })
+    .listen(port, () => {
+      console.log(`> Ready on http://${hostname}:${port}`)
+    })
+})
