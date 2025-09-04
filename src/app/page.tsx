@@ -4,6 +4,7 @@ import ChatForm from "@/components/ChatForm";
 import ChatMessage from "@/components/ChatMessage";
 import { useEffect, useState } from "react";
 import { socket } from "@/lib/socketClient";
+import { Input } from "@/components/ui/input";
 
 export default function Home() {
   const [room, setRoom] = useState("");
@@ -15,7 +16,7 @@ export default function Home() {
   const handleSendMessage = (message: string) => {
     const data = { room, message, sender: userName };
     setMessages((prev) => [...prev, { sender: userName, message }]);
-    socket.emit("message", data)
+    socket.emit("message", data);
     console.log(message);
   };
 
@@ -48,16 +49,16 @@ export default function Home() {
         <div className="flex flex-col items-center justify-center">
           <h1 className="mb-4 text-2xl font-bold">Join a Room</h1>
 
-          <input
+          <Input
             type="text "
-            placeholder="Enter your username"
+            placeholder="Username"
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
             className="w-64 px-4 py-2 mb-4 border-2 rounded-lg"
           />
-          <input
+          <Input
             type="text"
-            placeholder="Enter your name"
+            placeholder="Room Name"
             value={room}
             onChange={(e) => setRoom(e.target.value)}
             className="w-64 px-4 py-2 mb-4 border-2 rounded-lg"
@@ -82,10 +83,9 @@ export default function Home() {
               />
             );
           })}
+          <ChatForm onSendMessage={handleSendMessage} />
         </div>
       )}
-
-      <ChatForm onSendMessage={handleSendMessage} />
     </div>
   );
 }

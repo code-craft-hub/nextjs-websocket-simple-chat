@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { Input } from "./ui/input";
 
 const ChatForm = ({
   onSendMessage,
@@ -18,7 +19,7 @@ const ChatForm = ({
   return (
     <div>
       <form onSubmit={handleSubmit} className="flex gap-2 mt-4">
-        <input type="text" onChange={(e) => setMessage(e.target.value)} />
+        <Input type="text" onChange={(e) => setMessage(e.target.value)} />
         <button type="submit">Send</button>
       </form>
     </div>
